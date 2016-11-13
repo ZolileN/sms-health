@@ -26,7 +26,8 @@
     "bluebird": "^3.4.6",
     "envify": "^3.4.1",
     "googleapis": "^14.2.0",
-    "node-cache": "^4.1.0"
+    "node-cache": "^4.1.0",
+    "twilio": "^2.11.0"
   },
   "devDependencies": {
     "eslint": "^3.10.0",
