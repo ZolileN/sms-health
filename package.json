@@ -2,7 +2,7 @@
   "name": "sms-health",
   "version": "0.0.1",
   "description": "Healthcare through SMS for Civic Tech Leadership Program",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,15 +24,21 @@
   "homepage": "https://github.com/alexpatow/sms-health#readme",
   "dependencies": {
     "bluebird": "^3.4.6",
-    "envify": "^3.4.1",
-    "googleapis": "^14.2.0",
+    "body-parser": "^1.15.2",
+    "dotenv": "^2.0.0",
+    "express": "^4.14.0",
+    "google-cloud": "^0.43.0",
+    "natural": "^0.4.0",
     "node-cache": "^4.1.0",
-    "twilio": "^2.11.0"
+    "request": "^2.78.0",
+    "twilio": "^2.11.0",
+    "uuid": "^2.0.3"
   },
   "devDependencies": {
     "eslint": "^3.10.0",
-    "eslint-config-standard": "^6.2.1",
-    "eslint-plugin-promise": "^3.3.2",
-    "eslint-plugin-standard": "^2.0.1"
+    "eslint-config-airbnb-base": "^10.0.1",
+    "eslint-plugin-import": "^2.2.0",
+    "gulp": "^3.9.1",
+    "gulp-nodemon": "^2.2.1"
   }
 }
