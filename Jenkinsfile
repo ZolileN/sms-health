@@ -1,4 +1,4 @@
-node('node') {
+
   sh 'echo hello'
   try {
     sh node -v
@@ -7,4 +7,3 @@ node('node') {
 
         throw err
     }
-}
