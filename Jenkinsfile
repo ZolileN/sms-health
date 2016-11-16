@@ -1,7 +1,7 @@
 node('node') {
+        echo 'Hello, World!!'
   try {
-    stage 'Checkout'
-      echo 'Hello, World!!'
+    sh node -v
   }
       catch (err) {
 
