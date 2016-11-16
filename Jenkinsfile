@@ -1,5 +1,5 @@
 node('node') {
-        echo 'Hello, World!!'
+  sh 'echo hello'
   try {
     sh node -v
   }
