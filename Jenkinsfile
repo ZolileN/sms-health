@@ -1,1 +1,6 @@
-echo Hello, World!!
+node('node') {
+  try {
+    stage 'Checkout'
+      echo 'Hello, World!!'
+  }
+}
