@@ -1,3 +1,3 @@
-require('dotenv').config();
+require('dotenv').config({ silent: true });
 
 const google = require('googleapis');

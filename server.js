@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ silent: true });
 
 // Requirement statements
 const NodeCache = require('node-cache');
