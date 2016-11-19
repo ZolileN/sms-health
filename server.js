@@ -7,6 +7,7 @@ const apiMedicService = require('./api-medic-service');
 const languageService = require('./language-service');
 const translateService = require('./translate-service');
 const loggingService = require('./logging-service');
+const userService = require('./user-service');
 const stringComparisonService = require('./string-comparison-service');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -18,7 +19,12 @@ const app = express();
 
 app.use(bodyParser.json());
 
-loggingService.createLog('server started', 'info', null);
+
+// userService.createUser('+19529562602', 'M', 23).then(() => {
+//   return userService.getUsersByPhoneNumber('+19529562602');
+// }).then((result) => {
+//   console.log(result);
+// });
 
 // respond with "hello world" when a GET request is made to the homepage
 app.post('/v1', (req, res) => {
@@ -43,7 +49,8 @@ app.post('/v1', (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('Example app listening on port 3000!');
+  console.log('server started');
+  loggingService.createLog('server started', 'info', null);
 });
 
 apiMedicService.getDiagnosis([12, 13], 'male', 1993)
