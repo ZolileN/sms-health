@@ -6,7 +6,7 @@ const twilioService = require('./twilio-service');
 const apiMedicService = require('./api-medic-service');
 const languageService = require('./language-service');
 const translateService = require('./translate-service');
-// const loggingService = require('./logging-service');
+const loggingService = require('./logging-service');
 const stringComparisonService = require('./string-comparison-service');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -17,6 +17,8 @@ const cache = new NodeCache({ stdTTL: 60 * 60 * 24, checkperiod: 60 * 2 });
 const app = express();
 
 app.use(bodyParser.json());
+
+loggingService.createLog('server started', 'info', null);
 
 // respond with "hello world" when a GET request is made to the homepage
 app.post('/v1', (req, res) => {

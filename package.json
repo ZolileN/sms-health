@@ -21,9 +21,9 @@
   "bugs": {
     "url": "https://github.com/alexpatow/sms-health/issues"
   },
-  "engines" : {
-    "node" : "6",
-    "npm" : "3"
+  "engines": {
+    "node": "6",
+    "npm": "3"
   },
   "homepage": "https://github.com/alexpatow/sms-health#readme",
   "dependencies": {
@@ -32,8 +32,10 @@
     "dotenv": "^2.0.0",
     "express": "^4.14.0",
     "google-cloud": "^0.43.0",
+    "knex": "^0.12.6",
     "natural": "^0.4.0",
     "node-cache": "^4.1.0",
+    "pg": "^6.1.0",
     "request": "^2.78.0",
     "twilio": "^2.11.0",
     "uuid": "^2.0.3"
