@@ -1,0 +1,5 @@
+application: sms-health
+runtime: nodejs
+env: flex
+skip_files:
+ - ^node_modules$
