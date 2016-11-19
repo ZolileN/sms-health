@@ -11,7 +11,7 @@ const stringComparisonService = require('./services/string-comparison-service');
 const NodeCache = require('node-cache');
 const express = require('express');
 const bodyParser = require('body-parser');
-const uuid = require('node-uuid');
+const uuid = require('uuid');
 
 const cache = new NodeCache({ stdTTL: 60 * 60 * 24, checkperiod: 60 * 2 });
 
