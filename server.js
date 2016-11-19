@@ -1,14 +1,14 @@
 require('dotenv').config({ silent: true });
 
 // Requirement statements
+const twilioService = require('./services/twilio-service');
+const apiMedicService = require('./services/api-medic-service');
+const languageService = require('./services/language-service');
+const translateService = require('./services/translate-service');
+const loggingService = require('./services/logging-service');
+const userService = require('./services/user-service');
+const stringComparisonService = require('./services/string-comparison-service');
 const NodeCache = require('node-cache');
-const twilioService = require('./twilio-service');
-const apiMedicService = require('./api-medic-service');
-const languageService = require('./language-service');
-const translateService = require('./translate-service');
-const loggingService = require('./logging-service');
-const userService = require('./user-service');
-const stringComparisonService = require('./string-comparison-service');
 const express = require('express');
 const bodyParser = require('body-parser');
 const uuid = require('node-uuid');
