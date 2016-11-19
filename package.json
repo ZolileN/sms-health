@@ -37,6 +37,7 @@
     "node-cache": "^4.1.0",
     "pg": "^6.1.0",
     "request": "^2.78.0",
+    "string-similarity": "^1.1.0",
     "twilio": "^2.11.0",
     "uuid": "^2.0.3"
   },

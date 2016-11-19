@@ -70,28 +70,14 @@ apiMedicService.getDiagnosis([12, 13], 'male', 1993)
 //   }
 // });
 
-// console.log(stringComparisonService.compareEntitiesAndDescriptions(
-//   [{
-//     name: 'cough',
-//     type: 'OTHER',
-//     salience: 0.62,
-//   },
-//   {
-//     name: 'sore throat',
-//     type: 'OTHER',
-//     salience: 0.23,
-//   },
-//   {
-//     name: 'stuffy nose',
-//     type: 'OTHER',
-//     salience: 0.15,
-//   }],
+// console.log(stringComparisonService.compareMessageAndDescriptions(
+//   'Pain in my eye',
 //   [{
 //   	ID: 10,
 //   	Name: 'Abdominal pain'
 //   }, {
 //   	ID: 238,
-//   	Name: 'Anxiety'
+//   	Name: 'Heart Attack'
 //   }, {
 //   	ID: 104,
 //   	Name: 'Back pain'
