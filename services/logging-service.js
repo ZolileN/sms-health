@@ -7,20 +7,18 @@ const pg = require('knex')({
 });
 
 module.exports = {
-  info(message, userId) {
+  info(message) {
     console.log(message);
     pg('event_log').insert({
       event_type: 'info',
-      usr_id: userId,
       message,
       ts: new Date(),
     }).catch(err => console.log(err));
   },
-  error(message, eventType, userId) {
+  error(message) {
     console.error(message);
     pg('event_log').insert({
       event_type: 'error',
-      usr_id: userId,
       message,
       ts: new Date(),
     }).catch(err => console.log(err));
