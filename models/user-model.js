@@ -1,6 +1,6 @@
 require('dotenv').config({ silent: true });
 
-const log = require('./logging-service');
+const log = require('../helpers/logging-helper');
 
 const pg = require('knex')({
   client: 'pg',

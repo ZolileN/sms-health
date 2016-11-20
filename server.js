@@ -1,14 +1,14 @@
 require('dotenv').config({ silent: true });
 
 // Requirement statements
-const twilioService = require('./services/twilio-service');
-const apiMedicService = require('./services/api-medic-service');
-const languageService = require('./services/language-service');
-const translateService = require('./services/translate-service');
-const redisService = require('./services/redis-service');
-const log = require('./services/logging-service');
-const userService = require('./services/user-service');
-const stringComparisonService = require('./services/string-comparison-service');
+const twilioModel = require('./models/twilio-model');
+const apiMedicModel = require('./models/api-medic-model');
+const languageModel = require('./models/language-model');
+const translateModel = require('./models/translate-model');
+const redisModel = require('./models/redis-model');
+const log = require('./helpers/logging-helper');
+const userModel = require('./models/user-model');
+const stringComparisonHelper = require('./helpers/string-comparison-helper');
 const NodeCache = require('node-cache');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -36,9 +36,9 @@ app.post('/v1', (req, res) => {
   if (req.body && req.body.Body) {
     message = req.body.Body;
   }
-  translateService.translateToLanguage('It looks like you are having a heart attack', 'ar')
+  translateModel.translateToLanguage('It looks like you are having a heart attack', 'ar')
   .then((translation) => {
-    twilioService.sendSMSMessage('+19529562602', translation);
+    twilioModel.sendSMSMessage('+19529562602', translation);
   })
   .then(() => {
     res.status(200).send();
@@ -53,7 +53,7 @@ app.listen(3000, () => {
   log.info('server started');
 });
 
-apiMedicService.getDiagnosis([12, 13], 'male', 1993)
+apiMedicModel.getDiagnosis([12, 13], 'male', 1993)
 .then((body) => {
   console.log(body);
 })
@@ -61,7 +61,7 @@ apiMedicService.getDiagnosis([12, 13], 'male', 1993)
   console.log(err);
 });
 
-// languageService.detectEntities('I have a headache and a sore throat', (err, entities, apiResponse) => {
+// languageModel.detectEntities('I have a headache and a sore throat', (err, entities, apiResponse) => {
 //   if (err) {
 //     console.log(err);
 //   } else {
@@ -70,7 +70,7 @@ apiMedicService.getDiagnosis([12, 13], 'male', 1993)
 //   }
 // });
 
-// console.log(stringComparisonService.compareMessageAndDescriptions(
+// console.log(stringComparisonHelper.compareMessageAndDescriptions(
 //   'Pain in my eye',
 //   [{
 //   	ID: 10,
