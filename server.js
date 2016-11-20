@@ -5,7 +5,8 @@ const twilioService = require('./services/twilio-service');
 const apiMedicService = require('./services/api-medic-service');
 const languageService = require('./services/language-service');
 const translateService = require('./services/translate-service');
-const loggingService = require('./services/logging-service');
+const redisService = require('./services/redis-service');
+const log = require('./services/logging-service');
 const userService = require('./services/user-service');
 const stringComparisonService = require('./services/string-comparison-service');
 const NodeCache = require('node-cache');
@@ -49,8 +50,7 @@ app.post('/v1', (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('server started');
-  loggingService.createLog('server started', 'info', null);
+  log.info('server started');
 });
 
 apiMedicService.getDiagnosis([12, 13], 'male', 1993)

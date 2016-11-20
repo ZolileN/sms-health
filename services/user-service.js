@@ -1,6 +1,6 @@
 require('dotenv').config({ silent: true });
 
-const loggingService = require('./logging-service');
+const log = require('./logging-service');
 
 const pg = require('knex')({
   client: 'pg',
@@ -16,24 +16,21 @@ module.exports = {
       age,
       ts: new Date(),
     }).catch((err) => {
-      loggingService.createLog(err, 'error');
-      console.log(err);
+      log.error(err);
     });
   },
   getUserById(userId) {
     return pg('user').first({ usr_id: userId })
     .then(user => user)
     .catch((err) => {
-      loggingService.createLog(err, 'error', userId);
-      console.log(err);
+      log.error(err, userId);
     });
   },
   getUsersByPhoneNumber(phoneNumber) {
     return pg('user').where({ phone_number: phoneNumber })
     .then(user => user)
     .catch((err) => {
-      loggingService.createLog(err, 'error');
-      console.log(err);
+      log.error(err);
     });
   },
 };
