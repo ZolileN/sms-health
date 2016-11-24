@@ -1,20 +1,13 @@
 require('dotenv').config({ silent: true });
 
 // Requirement statements
-const twilioModel = require('./models/twilio-model');
 const apiMedicModel = require('./models/api-medic-model');
-const languageModel = require('./models/language-model');
-const translateModel = require('./models/translate-model');
-const redisModel = require('./models/redis-model');
+const conversationController = require('./controllers/conversation-controller');
+const cache = require('./models/cache-model');
 const log = require('./helpers/logging-helper');
-const userModel = require('./models/user-model');
-const stringComparisonHelper = require('./helpers/string-comparison-helper');
-const NodeCache = require('node-cache');
 const express = require('express');
 const bodyParser = require('body-parser');
-const uuid = require('uuid');
 
-const cache = new NodeCache({ stdTTL: 60 * 60 * 24, checkperiod: 60 * 2 });
 
 const app = express();
 
@@ -29,24 +22,7 @@ app.use(bodyParser.json());
 
 // respond with "hello world" when a GET request is made to the homepage
 app.post('/v1', (req, res) => {
-  let message = '';
-  if (req.body && req.body.From && cache.get(req.body.From) === null) {
-    cache.put(req.body.From, uuid.v4());
-  }
-  if (req.body && req.body.Body) {
-    message = req.body.Body;
-  }
-  translateModel.translateToLanguage('It looks like you are having a heart attack', 'ar')
-  .then((translation) => {
-    twilioModel.sendSMSMessage('+19529562602', translation);
-  })
-  .then(() => {
-    res.status(200).send();
-  })
-  .catch((err) => {
-    console.log(err);
-    res.status(500).json({ err }).send();
-  });
+
 });
 
 app.listen(3000, () => {

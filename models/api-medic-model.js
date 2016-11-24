@@ -1,21 +1,58 @@
 require('dotenv').config({ silent: true });
 
 const request = require('request');
+const CryptoJS = require('crypto-js');
+const log = require('../helpers/logging-helper');
 
-const baseUrl = 'https://sandbox-healthservice.priaid.ch/';
+const baseUrl = process.env.API_MEDIC_SANDBOX ? 'https://sandbox-healthservice.priaid.ch/' : 'https://healthservice.priaid.ch/';
 const language = 'en-gb';
 const format = 'json';
-const token = process.env.APIMEDIC_TOKEN;
+let token = '';
 
+function requestToken() {
+  const uri = process.env.API_MEDIC_SANDBOX ? 'https://sandbox-authservice.priaid.ch/login' : 'https://authservice.priaid.ch/login';
+  const secretKey = process.env.API_MEDIC_SECRET_KEY;
+  const computedHash = CryptoJS.HmacMD5(uri, secretKey);
+  const computedHashString = computedHash.toString(CryptoJS.enc.Base64);
+  const authorizationHeader = `Bearer ${process.env.API_MEDIC_API_KEY}:${computedHashString}`;
+  return new Promise((resolve, reject) => {
+    request.post({
+      url: uri,
+      headers: {
+        Authorization: authorizationHeader,
+      },
+    }, (error, response, body) => {
+      if (error) {
+        log.error(error);
+        reject(error);
+      } else {
+        token = JSON.parse(body).Token;
+        resolve();
+      }
+    });
+  });
+}
 
-const additionalRequestParameters = `token=${token}&language=${language}&format=${format}`;
+requestToken();
 
 function makeRequest(endpoint) {
+  const additionalRequestParameters = `token=${token}&language=${language}&format=${format}`;
   const formattedAdditionalRequestParameters = endpoint.indexOf('?') > 0 ? `&${additionalRequestParameters}` : `?${additionalRequestParameters}`;
   return new Promise((resolve, reject) => {
-    request(baseUrl + endpoint + formattedAdditionalRequestParameters, (error, response, body) => {
+    const url = baseUrl + endpoint + formattedAdditionalRequestParameters;
+    request(url, (error, response, body) => {
       if (error) {
         reject(error);
+      } else if (body && (body === '"Missing or invalid token"' || body === '"Invalid token"')) {
+        requestToken().then(() => {
+          makeRequest(endpoint)
+          .then((responseBody) => {
+            resolve(responseBody);
+          })
+          .catch((err) => {
+            reject(err);
+          });
+        });
       } else {
         resolve(body);
       }
