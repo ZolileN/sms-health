@@ -13,13 +13,15 @@ const uuid = require('uuid');
 const messages = {
   greeting: 'Hi, Thank you for using the SMSHealth service.',
   demo: 'This is a demo version of this service and should only be used for testing. Consult a doctor for any medical questions.',
-  error: 'We\'re sorry, there was an error processing your request. Please try again later',
+  error: 'We\'re sorry, there was an error processing your request. Please try again later.',
   timeoutError: 'Thank you for using the SMSHealth service. This conversation is older than 24 hours, and the information is unretrievable. Please text "HELP" to this number to start the conversation again.',
   storedInformation: 'This phone number has previously reported STORED_GENDER as the gender and STORED_AGE as the age. Would you like to continue using this ("Y" or "N")?',
-  age: 'What is your age? Example: 23',
+  storedInformationError: 'We\'re sorry, there was an issue processing your response. Please try again using "Y" or "N".',
+  age: 'What is your age? Example: 23.',
   ageError: 'We\'re sorry, there was an issue saving your age. Please try again using numbers between 0 and 115.',
   gender: 'What is your gender (male or female)?',
-  genderError: 'We\'re sorry, there was an issue saving your gender. Please try again using "male" or "female"',
+  genderError: 'We\'re sorry, there was an issue saving your gender. Please try again using "male" or "female".',
+  symptoms: 'Can you please describe the symptoms you are experiencing?',
 };
 
 function checkIfUserGenderAndAgeInDatabase(phoneNumber) {
@@ -43,28 +45,12 @@ function checkIfUserGenderAndAgeInDatabase(phoneNumber) {
   });
 }
 
-function sendAgeErrorMessage(phoneNumber) {
-  twilio.sendSMSMessage(phoneNumber, messages.ageError);
-}
-
 function validateAndFormatAge(age) {
   const formattedAge = Number.parseInt(age, 10);
   if (Number.isInteger(formattedAge) && formattedAge >= 0 && formattedAge <= 115) {
     return formattedAge;
   }
   return null;
-}
-
-function storeAge(phoneNumber, age) {
-  return user.updateUsersAge(phoneNumber, age);
-}
-
-function sendGenderMessage(phoneNumber) {
-  return twilio.sendSMSMessage(phoneNumber, messages.gender);
-}
-
-function sendGenderErrorMessage(phoneNumber) {
-  return twilio.sendSMSMessage(phoneNumber, messages.genderError);
 }
 
 function validateAndFormatGender(gender) {
@@ -74,10 +60,6 @@ function validateAndFormatGender(gender) {
     return gender.toLowerCase() === 'm' ? 'M' : 'F';
   }
   return null;
-}
-
-function storeGender(phoneNumber, gender) {
-  return user.updateUsersGender(phoneNumber, gender);
 }
 
 function handleConversation(req) {
@@ -135,9 +117,79 @@ function handleConversation(req) {
         reject();
       });
     } else if (phoneNumber && userId) {
-
+      let userDoc = {};
+      redis.addConversationMessage(userId, messageBody, 'incoming')
+      .then(() => redis.getUserDocument(userId))
+      .then((userDocument) => {
+        userDoc = userDocument;
+        switch (userDoc.lastSentMessage) {
+          case 'age':
+          case 'ageError': {
+            const validatedAge = validateAndFormatAge(messageBody);
+            if (validatedAge) {
+              return user.updateUsersAge(phoneNumber, validatedAge)
+              .then(() => twilio.sendSMSMessage(phoneNumber, messages.gender))
+              .then(() => {
+                redis.setUserDocument(userId, {
+                  lastSentMessage: 'gender',
+                });
+              });
+            }
+            return twilio.sendSMSMessage(phoneNumber, messages.ageError)
+            .then(() => {
+              redis.setUserDocument(userId, {
+                lastSentMessage: 'ageError',
+              });
+            });
+          }
+          case 'gender':
+          case 'genderError': {
+            const validatedGender = validateAndFormatGender(messageBody);
+            if (validatedGender) {
+              return user.updateUsersGender(phoneNumber, validatedGender)
+              .then(() => twilio.sendSMSMessage(phoneNumber, messages.symptoms))
+              .then(() => {
+                redis.setUserDocument(userId, {
+                  lastSentMessage: 'symptoms',
+                });
+              });
+            }
+            return twilio.sendSMSMessage(phoneNumber, messages.genderError)
+            .then(() => {
+              redis.setUserDocument(userId, {
+                lastSentMessage: 'genderError',
+              });
+            });
+          }
+          case 'storedInformation':
+          case 'storedInformationError': {
+            if (messageBody.toLowerCase() === 'y' || messageBody.toLowerCase() === 'yes') {
+              return twilio.sendSMSMessage(phoneNumber, messages.symptoms);
+            } else if (messageBody.toLowerCase() === 'n' || messageBody.toLowerCase() === 'no') {
+              return twilio.sendSMSMessage(phoneNumber, messages.age, userId)
+              .then(() => {
+                redis.setUserDocument(userId, {
+                  lastSentMessage: 'age',
+                });
+              });
+            }
+            return twilio.sendSMSMessage(phoneNumber, messages.storedInformationError);
+          }
+          default:
+            return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
+        }
+      })
+      .then(() => {
+        resolve();
+      })
+      .catch((err) => {
+        log.error(err);
+        twilio.sendSMSMessage(phoneNumber, messages.error, userId);
+        reject();
+      });
     } else if (phoneNumber && !userId && messageBody !== 'HELP') {
       twilio.sendSMSMessage(phoneNumber, messages.timeoutError);
+      resolve();
     }
   });
 }
