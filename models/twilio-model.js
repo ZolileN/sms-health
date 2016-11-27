@@ -1,22 +1,31 @@
 require('dotenv').config({ silent: true });
 
 const twilio = require('twilio');
+const redis = require('./redis-model');
 
 const client = new twilio.RestClient(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
-function sendSMSMessage(phoneNumber, messageBody) {
+function sendSMSMessage(phoneNumber, messageBody, userId) {
+  if (userId) {
+    redis.addConversationMessage(userId, messageBody, 'outgoing');
+  }
   return new Promise((resolve, reject) => {
-    client.sms.messages.create({
-      to: phoneNumber,
-      from: process.env.TWILIO_NUMBER,
-      body: messageBody,
-    }, (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
+    if (!process.env.TWILIO_LOG_OUTPUT) {
+      client.sms.messages.create({
+        to: phoneNumber,
+        from: process.env.TWILIO_NUMBER,
+        body: messageBody,
+      }, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    } else {
+      console.log(`TWILLIO MESSAGE: ${messageBody}`);
+      resolve();
+    }
   });
 }
 

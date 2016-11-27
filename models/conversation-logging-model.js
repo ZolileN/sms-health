@@ -9,24 +9,14 @@ const pg = require('knex')({
 });
 
 module.exports = {
-  outgoing(conversationId, messageId, message) {
+  log(userId, messageId, message, direction, timestamp) {
+    const formattedDirection = direction === 'incoming' ? 'i' : 'o';
     pg('message_log').insert({
-      conversation_id: conversationId,
+      user_id: userId,
       message_id: messageId,
-      message_direction: 'o',
+      message_direction: formattedDirection,
       message,
-      ts: new Date(),
-    }).catch((err) => {
-      log.error(err);
-    });
-  },
-  incoming(conversationId, messageId, message) {
-    pg('message_log').insert({
-      conversation_id: conversationId,
-      message_id: messageId,
-      message_direction: 'i',
-      message,
-      ts: new Date(),
+      ts: new Date(timestamp),
     }).catch((err) => {
       log.error(err);
     });

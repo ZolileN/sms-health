@@ -7,7 +7,7 @@ module.exports = {
     return cache.get(key);
   },
   set(key, value) {
-    return cache.put(key, value);
+    return cache.set(key, value);
   },
   delete(key) {
     return cache.del(key);

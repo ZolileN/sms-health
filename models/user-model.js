@@ -10,24 +10,38 @@ const pg = require('knex')({
 
 module.exports = {
   createUser(phoneNumber, gender, age) {
-    return pg('user').insert({
-      phone_number: phoneNumber,
-      gender,
-      age,
-      ts: new Date(),
-    }).catch((err) => {
+    pg('user')
+    .where({ phone_number: phoneNumber })
+    .del()
+    .then(() => pg('user').insert({ phone_number: phoneNumber, gender, age, ts: new Date() }))
+    .catch((err) => {
       log.error(err);
     });
   },
-  getUserById(userId) {
-    return pg('user').first({ usr_id: userId })
-    .then(user => user)
+  updateUsersGender(phoneNumber, gender) {
+    return pg('user').update({
+      gender,
+      ts: new Date(),
+    })
+    .where({ phone_number: phoneNumber })
     .catch((err) => {
-      log.error(err, userId);
+      log.error(err);
     });
   },
-  getUsersByPhoneNumber(phoneNumber) {
-    return pg('user').where({ phone_number: phoneNumber })
+  updateUsersAge(phoneNumber, age) {
+    return pg('user').update({
+      age,
+      ts: new Date(),
+    })
+    .where({ phone_number: phoneNumber })
+    .catch((err) => {
+      log.error(err);
+    });
+  },
+  getUserByPhoneNumber(phoneNumber) {
+    return pg('user')
+    .where('phone_number', phoneNumber)
+    .first('age', 'gender')
     .then(user => user)
     .catch((err) => {
       log.error(err);

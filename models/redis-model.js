@@ -1,5 +1,6 @@
 const redis = require('redis');
 const bluebird = require('bluebird');
+const conversationLog = require('./conversation-logging-model');
 
 bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);
@@ -13,20 +14,33 @@ module.exports = {
     return client.hmsetAsync(`user.${userId}`, val);
   },
   getUserDocument(userId) {
-    return client.hgetallAsync(`user.${userId}`);
+    return client.hgetallAsync(`user.${userId}`).then((doc) => {
+      const parsedDoc = doc;
+      if (doc.messages) {
+        parsedDoc.messages = JSON.parse(doc.messages);
+      }
+      return parsedDoc;
+    });
   },
-  addConversationMessage(conversationId, message) {
+  addConversationMessage(userId, message, direction) {
     const val = message;
     val.timestamp = new Date().toISOString();
-    return client.rpushAsync(`conversation.${conversationId}`, JSON.stringify(val));
-  },
-  getConversation(conversationId) {
-    return client.lrangeAsync(`conversation.${conversationId}`, 0, -1).then((items) => {
-      const list = [];
-      items.forEach((item) => {
-        list.push(JSON.parse(item));
+    return client.hgetallAsync(`user.${userId}`).then((doc) => {
+      const retrievedDoc = doc;
+      const timestamp = new Date().toISOString();
+      if (!retrievedDoc.messages) {
+        retrievedDoc.messages = [];
+      } else {
+        retrievedDoc.messages = JSON.parse(retrievedDoc.messages);
+      }
+      retrievedDoc.messages.push({
+        message,
+        timestamp,
+        direction,
       });
-      return list;
+      conversationLog.log(userId, retrievedDoc.messages.length, message, direction, timestamp);
+      retrievedDoc.messages = JSON.stringify(retrievedDoc.messages);
+      return this.setUserDocument(userId, retrievedDoc);
     });
   },
   setLanguageDocument(languageCode, object) {
