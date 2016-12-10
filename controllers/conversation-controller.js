@@ -258,6 +258,10 @@ function handleMoreInformation(phoneNumber, userId) {
 function handleConversation(req) {
   return new Promise((resolve, reject) => {
     console.log(req);
+    if (!req.body) {
+      reject();
+      return;
+    }
     const phoneNumber = req.body.From;
     const userId = cache.get(phoneNumber);
     const messageBody = req.body.Body;
@@ -366,16 +370,16 @@ function handleConversation(req) {
             }
             break;
           case 'proposedSymptoms':
-            if (messageBody.toUpperCase() === 'Y') {
+            if (messageBody.toLowerCase() === 'y') {
               handleProposedSymptomsCorrect();
-            } else if (messageBody.toUpperCase() === 'N') {
+            } else if (messageBody.toLowerCase() === 'n') {
               handleProposedSymptomsIncorrect();
             } else {
               return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
             }
             break;
           case 'diagnosisResults':
-            if (messageBody.toUpperCase() === 'INFO') {
+            if (messageBody.toLowerCase() === 'info') {
               handleMoreInformation(phoneNumber, userId);
             } else {
               return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
@@ -393,7 +397,7 @@ function handleConversation(req) {
         twilio.sendSMSMessage(phoneNumber, messages.error, userId);
         reject();
       });
-    } else if (phoneNumber && !userId && messageBody !== 'HELP') {
+    } else if (phoneNumber && !userId && messageBody.toLowerCase !== 'hi') {
       twilio.sendSMSMessage(phoneNumber, messages.timeoutError);
       resolve();
     }
