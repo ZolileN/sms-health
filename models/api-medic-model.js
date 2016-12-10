@@ -32,7 +32,11 @@ function requestToken() {
         log.error(error);
         reject(error);
       } else {
-        token = JSON.parse(body).Token;
+        try {
+          token = JSON.parse(body).Token;
+        } catch (err) {
+          log.error(err);
+        }
         resolve();
       }
     });

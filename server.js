@@ -1,9 +1,7 @@
 require('dotenv').config({ silent: true });
 
 // Requirement statements
-const apiMedicModel = require('./models/api-medic-model');
 const conversationController = require('./controllers/conversation-controller');
-const cache = require('./models/cache-model');
 const log = require('./helpers/logging-helper');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -24,14 +22,6 @@ app.post('/v1', (req, res) => {
   });
 });
 
-app.listen(3000, () => {
+app.listen(process.env.PORT || 3000, () => {
   log.info('server started');
 });
-
-// apiMedicModel.getDiagnosis([12, 13], 'male', 1993)
-// .then((body) => {
-//   console.log(body);
-// })
-// .catch((err) => {
-//   console.log(err);
-// });
