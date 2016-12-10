@@ -15,7 +15,7 @@ const messages = {
   greeting: 'Hi, Thank you for using the SMSHealth service.',
   demo: 'This is a demo version of this service and should only be used for testing. Consult a doctor for any medical questions.',
   error: 'We\'re sorry, there was an error processing your request. Please try again later.',
-  timeoutError: 'Thank you for using the SMSHealth service. This conversation is older than 24 hours, and the information is unretrievable. Please text "HELP" to this number to start the conversation again.',
+  timeoutError: 'Thank you for using the SMSHealth service. This conversation is older than 24 hours or otherwise unretrievable for security reasons. Please text "HELP" to this number to start the conversation again.',
   storedInformation: 'This phone number has previously reported STORED_GENDER as the gender and STORED_AGE as the age. Would you like to continue using this ("Y" or "N")?',
   storedInformationError: 'We\'re sorry, there was an issue processing your response. Please try again using "Y" or "N".',
   age: 'What is your age? Example: 23.',
@@ -26,6 +26,7 @@ const messages = {
   symptomsNoValidResults: 'We\'re sorry, but we couldn\'t find a valid symptom in our database, can you please describe your symptoms in more detail?',
   proposedSymptoms: 'We were unable to correctly diagnosis based on the symptoms provided. Are you experiencing PROPOSED_SYMPTOMS ("Y" or "N")?',
   proposedSymptomsIncorrect: 'We\'re sorry that those symptoms did not match. Can you please describe your symptoms in more detail?',
+  proposedSymptomsNoReturn: 'We\'re sorry, but we could not find a matching diagnosis for those symptoms. Could you please describe your symptoms in more detail?',
   redFlag: 'These symptoms: FLAGGED_SYMPTOM_STRING are concerning and should be evaluated by a doctor. Please go to your nearest healthcare provider.',
   diagnosisResults: 'It appears that you may be experiencing DIAGNOSIS_RESULT. This was calculated with a DIAGNOSIS_CERTAINTY % probability.DIAGNOSIS_RESULT_ALTERNATES_STRING If you would like more information about treatment options, respond with "INFO".',
   diagnosisAlternativeResults: ' It could also be DIAGNOSIS_RESULT_ALTERNATES.',
@@ -75,17 +76,27 @@ function validateAndFormatGender(gender) {
 }
 
 function sendProposedSymptoms(comparisons, userLookupResults, yearOfBirth, userId, phoneNumber) {
-  apiMedic.getProposedSymptoms(comparisons.map(comparison => comparison.id), userLookupResults.gender, yearOfBirth)
+  apiMedic.getProposedSymptoms(`[${comparisons.map(comparison => `"${comparison.id}"`).join(',')}]`, userLookupResults.gender, yearOfBirth)
   .then((proposedSymptoms) => {
-    twilio.sendSMSMessage(phoneNumber, messages.proposedSymptoms.replace('PROPOSED_SYMPTOMS', listify(proposedSymptoms, { finalWord: 'or' })), userId)
-    .then(() => {
-      redis.setProposedSymptoms(userId, proposedSymptoms);
-    });
+    const parsedProposedSymptoms = JSON.parse(proposedSymptoms);
+    if (parsedProposedSymptoms.length > 0) {
+      const proposedSymptomsList = listify(parsedProposedSymptoms, { finalWord: 'or' });
+      twilio.sendSMSMessage(phoneNumber, messages.proposedSymptoms.replace('PROPOSED_SYMPTOMS', proposedSymptomsList), userId)
+      .then(() => {
+        redis.setProposedSymptoms(userId, parsedProposedSymptoms);
+      });
+    } else {
+      twilio.sendSMSMessage(phoneNumber, messages.proposedSymptomsNoReturn, userId)
+      .then(() => {
+        redis.setLastSentMessage(userId, 'proposedSymptomsNoReturn');
+      });
+    }
   });
 }
 
 function handleRedflag(phoneNumber, concerningRedFlagResults, userId) {
-  twilio.sendSMSMessage(phoneNumber, messages.redFlag.replace('FLAGGED_SYMPTOM_STRING', listify(concerningRedFlagResults, { finalWord: 'and' })), userId)
+  const concerningRedFlagResultsList = (typeof concerningRedFlagResults === 'object') ? listify(concerningRedFlagResults, { finalWord: 'and' }) : concerningRedFlagResults;
+  twilio.sendSMSMessage(phoneNumber, messages.redFlag.replace('FLAGGED_SYMPTOM_STRING', concerningRedFlagResultsList), userId)
   .then(() => {
     redis.setLastSentMessage(userId, 'redFlag');
   });
@@ -96,7 +107,8 @@ function handleDiagnosisResults(phoneNumber, weightedDiagnosisResponse, userId) 
   const isdiagnosisAlternativeResultsRequired = (diagnosisResults[1] && diagnosisResults[0].accuracy - diagnosisResults[1].accuracy < alternativeDiagnosisSimilarityThreshold);
   let alternativeDiagnosisMessage = '';
   if (isdiagnosisAlternativeResultsRequired) {
-    alternativeDiagnosisMessage = messages.diagnosisAlternativeResults.replace('DIAGNOSIS_RESULT_ALTERNATES', listify(diagnosisResults.slice(1).map(diagnosis => diagnosis.name), { finalWord: 'or' }));
+    const diagnosisResultsAlternativeList = (diagnosisResults.length > 2) ? listify(diagnosisResults.slice(1).map(diagnosis => diagnosis.name), { finalWord: 'or' }) : diagnosisResults[1].name;
+    alternativeDiagnosisMessage = messages.diagnosisAlternativeResults.replace('DIAGNOSIS_RESULT_ALTERNATES', diagnosisResultsAlternativeList);
   }
   const diagnosisMessage = messages.diagnosisResults.replace('DIAGNOSIS_RESULT', diagnosisResults[0].name).replace('DIAGNOSIS_CERTAINTY', diagnosisResults[0].accuracy).replace('DIAGNOSIS_RESULT_ALTERNATES_STRING', alternativeDiagnosisMessage);
   twilio.sendSMSMessage(phoneNumber, diagnosisMessage, userId)
@@ -127,8 +139,13 @@ function handleSymptoms(phoneNumber, messageBody, userId) {
               const redFlagPromises = diagnosisResultsAboveThreshold.map(result => apiMedic.getRedFlag(result.Issue.ID));
               Promise.all(redFlagPromises)
               .then((result) => {
-                const concerningRedFlagResults = result.reduce(redFlagResult => redFlagResult !== '');
-                if (concerningRedFlagResults.length) {
+                const concerningRedFlagResults = [];
+                result.forEach((redFlagResult) => {
+                  if (redFlagResult !== '' && redFlagResult !== '""') {
+                    concerningRedFlagResults.push(redFlagResult);
+                  }
+                });
+                if (concerningRedFlagResults.length > 1) {
                   handleRedflag(phoneNumber, concerningRedFlagResults, userId);
                 } else {
                   const parsedDiagnosisResults = JSON.parse(diagnosisResults);
@@ -137,6 +154,7 @@ function handleSymptoms(phoneNumber, messageBody, userId) {
               })
               .catch((err) => {
                 log.error(err);
+                twilio.sendSMSMessage(phoneNumber, messages.error, userId);
               });
             } else {
               sendProposedSymptoms(comparisons, userLookupResults, yearOfBirth, userId, phoneNumber);
@@ -144,11 +162,13 @@ function handleSymptoms(phoneNumber, messageBody, userId) {
           })
           .catch((err) => {
             log.error(err);
+            twilio.sendSMSMessage(phoneNumber, messages.error, userId);
           });
         }
       })
       .catch((err) => {
         log.error(err);
+        twilio.sendSMSMessage(phoneNumber, messages.error, userId);
       });
     } else {
       sendNoValidResults(phoneNumber, userId);
@@ -156,6 +176,7 @@ function handleSymptoms(phoneNumber, messageBody, userId) {
   })
   .catch((err) => {
     log.error(err);
+    twilio.sendSMSMessage(phoneNumber, messages.error, userId);
   });
 }
 
@@ -186,6 +207,7 @@ function handleProposedSymptomsCorrect(phoneNumber, userId) {
           })
           .catch((err) => {
             log.error(err);
+            twilio.sendSMSMessage(phoneNumber, messages.error, userId);
           });
         } else {
           sendNoValidResults(phoneNumber, userId);
@@ -193,11 +215,13 @@ function handleProposedSymptomsCorrect(phoneNumber, userId) {
       })
       .catch((err) => {
         log.error(err);
+        twilio.sendSMSMessage(phoneNumber, messages.error, userId);
       });
     }
   })
   .catch((err) => {
     log.error(err);
+    twilio.sendSMSMessage(phoneNumber, messages.error, userId);
   });
 }
 
@@ -335,6 +359,7 @@ function handleConversation(req) {
           }
           case 'symptoms':
           case 'symptomsNoValidResults':
+          case 'proposedSymptomsNoReturn':
             if (messageBody) {
               return handleSymptoms(phoneNumber, messageBody, userId);
             }

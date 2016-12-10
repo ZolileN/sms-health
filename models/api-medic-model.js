@@ -102,7 +102,7 @@ module.exports = {
     return makeRequest(`symptoms/${bodySublocationId}/${classification}`);
   },
   getProposedSymptoms(symptoms, gender, yearOfBirth) {
-    return makeRequest(`symptoms/proposed?symptoms=${JSON.stringify(symptoms)}&gender=${genderFormatDict[gender]}&year_of_birth=${yearOfBirth}`);
+    return makeRequest(`symptoms/proposed?symptoms=${symptoms}&gender=${genderFormatDict[gender]}&year_of_birth=${yearOfBirth}`);
   },
   getRedFlag(symptomId) {
     return makeRequest(`redflag?symptomId=${symptomId}`);
