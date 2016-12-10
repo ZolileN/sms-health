@@ -15,7 +15,7 @@ const messages = {
   greeting: 'Hi, Thank you for using the SMSHealth service.',
   demo: 'This is a demo version of this service and should only be used for testing. Consult a doctor for any medical questions.',
   error: 'We\'re sorry, there was an error processing your request. Please try again later.',
-  timeoutError: 'Thank you for using the SMSHealth service. This conversation is older than 24 hours or otherwise unretrievable for security reasons. Please text "HELP" to this number to start the conversation again.',
+  timeoutError: 'Thank you for using the SMSHealth service. This conversation is older than 24 hours or otherwise unretrievable for security reasons. Please text "HI" to this number to start the conversation again.',
   storedInformation: 'This phone number has previously reported STORED_GENDER as the gender and STORED_AGE as the age. Would you like to continue using this ("Y" or "N")?',
   storedInformationError: 'We\'re sorry, there was an issue processing your response. Please try again using "Y" or "N".',
   age: 'What is your age? Example: 23.',
