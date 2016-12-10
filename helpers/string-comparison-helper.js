@@ -1,5 +1,6 @@
 const natural = require('natural');
 const stringSimilarity = require('string-similarity');
+const minimumPointsValue = 80;
 
 function getImportanceOfWordsInString(string) {
   const TfIdf = natural.TfIdf;
@@ -20,6 +21,7 @@ function getImportanceOfWordsInString(string) {
 function compareMessageAndDescriptions(message, descriptions) {
   const compareResults = [];
   const importantWords = getImportanceOfWordsInString(message).filter(word => word.importance > 0);
+  console.log(importantWords);
   descriptions.forEach((description) => {
     let points = 0;
     importantWords.forEach((importantWord) => {
@@ -33,7 +35,8 @@ function compareMessageAndDescriptions(message, descriptions) {
       points,
     });
   });
-  return compareResults.sort((a, b) => b.points - a.points);
+  console.log(compareResults);
+  return compareResults.filter(comparison => comparison.points > (minimumPointsValue / importantWords.length)).sort((a, b) => b.points - a.points);
 }
 
 module.exports = { compareMessageAndDescriptions };

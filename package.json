@@ -34,6 +34,7 @@
     "express": "^4.14.0",
     "google-cloud": "^0.43.0",
     "knex": "^0.12.6",
+    "listify": "^1.0.0",
     "natural": "^0.4.0",
     "node-cache": "^4.1.0",
     "pg": "^6.1.0",

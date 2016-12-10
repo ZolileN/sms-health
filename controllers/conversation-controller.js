@@ -2,13 +2,14 @@ require('dotenv').config({ silent: true });
 
 const twilio = require('../models/twilio-model');
 const apiMedic = require('../models/api-medic-model');
-const translate = require('../models/translate-model');
+// const translate = require('../models/translate-model');
 const redis = require('../models/redis-model');
 const cache = require('../models/cache-model');
 const user = require('../models/user-model');
 const stringComparison = require('../helpers/string-comparison-helper');
 const log = require('../helpers/logging-helper');
 const uuid = require('uuid');
+const listify = require('listify');
 
 const messages = {
   greeting: 'Hi, Thank you for using the SMSHealth service.',
@@ -22,7 +23,17 @@ const messages = {
   gender: 'What is your gender (male or female)?',
   genderError: 'We\'re sorry, there was an issue saving your gender. Please try again using "male" or "female".',
   symptoms: 'Can you please describe the symptoms you are experiencing?',
+  symptomsNoValidResults: 'We\'re sorry, but we couldn\'t find a valid symptom in our database, can you please describe your symptoms in more detail?',
+  proposedSymptoms: 'We were unable to correctly diagnosis based on the symptoms provided. Are you experiencing PROPOSED_SYMPTOMS ("Y" or "N")?',
+  proposedSymptomsIncorrect: 'We\'re sorry that those symptoms did not match. Can you please describe your symptoms in more detail?',
+  redFlag: 'These symptoms: FLAGGED_SYMPTOM_STRING are concerning and should be evaluated by a doctor. Please go to your nearest healthcare provider.',
+  diagnosisResults: 'It appears that you may be experiencing DIAGNOSIS_RESULT. This was calculated with a DIAGNOSIS_CERTAINTY % probability.DIAGNOSIS_RESULT_ALTERNATES_STRING If you would like more information about treatment options, respond with "INFO".',
+  diagnosisAlternativeResults: ' It could also be DIAGNOSIS_RESULT_ALTERNATES.',
+  moreInformation: 'Short description of diagnosis: DIAGNOSIS_INFO. Possible treatment options: DIAGNOSIS_TREATMENT',
 };
+
+const correctDiagnosisThreshold = process.env.CORRECT_DIAGNOSIS_THRESHOLD;
+const alternativeDiagnosisSimilarityThreshold = process.env.ALTERNATIVE_DIAGNOSIS_SIMILARITY_THRESHOLD;
 
 function checkIfUserGenderAndAgeInDatabase(phoneNumber) {
   return new Promise((resolve, reject) => {
@@ -33,9 +44,10 @@ function checkIfUserGenderAndAgeInDatabase(phoneNumber) {
           age: result.age,
           gender: result.gender,
         });
+      } else {
+        user.createUser(phoneNumber);
       }
     })
-    .then(user.createUser(phoneNumber))
     .then(() => {
       resolve(false);
     })
@@ -62,17 +74,179 @@ function validateAndFormatGender(gender) {
   return null;
 }
 
+function sendProposedSymptoms(comparisons, userLookupResults, yearOfBirth, userId, phoneNumber) {
+  apiMedic.getProposedSymptoms(comparisons.map(comparison => comparison.id), userLookupResults.gender, yearOfBirth)
+  .then((proposedSymptoms) => {
+    twilio.sendSMSMessage(phoneNumber, messages.proposedSymptoms.replace('PROPOSED_SYMPTOMS', listify(proposedSymptoms, { finalWord: 'or' })), userId)
+    .then(() => {
+      redis.setProposedSymptoms(userId, proposedSymptoms);
+    });
+  });
+}
+
+function handleRedflag(phoneNumber, concerningRedFlagResults, userId) {
+  twilio.sendSMSMessage(phoneNumber, messages.redFlag.replace('FLAGGED_SYMPTOM_STRING', listify(concerningRedFlagResults, { finalWord: 'and' })), userId)
+  .then(() => {
+    redis.setLastSentMessage(userId, 'redFlag');
+  });
+}
+
+function handleDiagnosisResults(phoneNumber, weightedDiagnosisResponse, userId) {
+  const diagnosisResults = weightedDiagnosisResponse.map(diagnosis => ({ id: diagnosis.Issue.ID, name: diagnosis.Issue.Name, accuracy: diagnosis.Issue.Accuracy }));
+  console.log(diagnosisResults);
+  const isdiagnosisAlternativeResultsRequired = (diagnosisResults[1] && diagnosisResults[0].accuracy - diagnosisResults[1].accuracy < alternativeDiagnosisSimilarityThreshold);
+  let alternativeDiagnosisMessage = '';
+  if (isdiagnosisAlternativeResultsRequired) {
+    alternativeDiagnosisMessage = messages.diagnosisAlternativeResults.replace('DIAGNOSIS_RESULT_ALTERNATES', listify(diagnosisResults.slice(1).map(diagnosis => diagnosis.name), { finalWord: 'or' }));
+  }
+  const diagnosisMessage = messages.diagnosisResults.replace('DIAGNOSIS_RESULT', diagnosisResults[0].name).replace('DIAGNOSIS_CERTAINTY', diagnosisResults[0].accuracy).replace('DIAGNOSIS_RESULT_ALTERNATES_STRING', alternativeDiagnosisMessage);
+  twilio.sendSMSMessage(phoneNumber, diagnosisMessage, userId)
+  .then(() => {
+    redis.setDiagnosis(userId, diagnosisResults);
+  });
+}
+
+function sendNoValidResults(phoneNumber, userId) {
+  twilio.sendSMSMessage(phoneNumber, messages.symptomsNoValidResults, userId)
+  .then(() => {
+    redis.setLastSentMessage(userId, 'symptomsNoValidResults');
+  });
+}
+
+function handleSymptoms(phoneNumber, messageBody, userId) {
+  apiMedic.getSymptoms().then((results) => {
+    const comparisons = stringComparison.compareMessageAndDescriptions(messageBody, JSON.parse(results));
+    if (comparisons.length > 0) {
+      user.getUserByPhoneNumber(phoneNumber)
+      .then((userLookupResults) => {
+        if (userLookupResults && userLookupResults.age && userLookupResults.gender) {
+          const yearOfBirth = new Date().getFullYear() - userLookupResults.age;
+          apiMedic.getDiagnosis(comparisons.map(comparison => comparison.id), userLookupResults.gender, yearOfBirth)
+          .then((diagnosisResults) => {
+            console.log(diagnosisResults);
+            const diagnosisResultsAboveThreshold = JSON.parse(diagnosisResults).filter(result => result.Issue.Accuracy > correctDiagnosisThreshold);
+            if (diagnosisResultsAboveThreshold.length) {
+              const redFlagPromises = diagnosisResultsAboveThreshold.map(result => apiMedic.getRedFlag(result.Issue.ID));
+              console.log(redFlagPromises);
+              Promise.all(redFlagPromises)
+              .then((result) => {
+                console.log(result);
+                console.log(typeof result);
+                const concerningRedFlagResults = result.reduce(redFlagResult => redFlagResult !== '');
+                if (concerningRedFlagResults.length) {
+                  handleRedflag(phoneNumber, concerningRedFlagResults, userId);
+                } else {
+                  const parsedDiagnosisResults = JSON.parse(diagnosisResults);
+                  handleDiagnosisResults(phoneNumber, parsedDiagnosisResults, userId);
+                }
+              })
+              .catch((err) => {
+                log.error(err);
+              });
+            } else {
+              sendProposedSymptoms(comparisons, userLookupResults, yearOfBirth, userId, phoneNumber);
+            }
+          })
+          .catch((err) => {
+            log.error(err);
+          });
+        }
+      })
+      .catch((err) => {
+        log.error(err);
+      });
+    } else {
+      sendNoValidResults(phoneNumber, userId);
+    }
+  })
+  .catch((err) => {
+    log.error(err);
+  });
+}
+
+function handleProposedSymptomsCorrect(phoneNumber, userId) {
+  let proposedSymptoms = {};
+  redis.getUserDocument(userId)
+  .then((userDoc) => {
+    proposedSymptoms = userDoc.proposedSymptoms;
+    user.getUserByPhoneNumber(phoneNumber);
+  })
+  .then((userLookupResults) => {
+    if (userLookupResults && userLookupResults.age && userLookupResults.gender) {
+      const yearOfBirth = new Date().getFullYear() - userLookupResults.age;
+      apiMedic.getDiagnosis(proposedSymptoms.map(symptom => symptom.id), userLookupResults.gender, yearOfBirth)
+      .then((diagnosisResults) => {
+        const diagnosisResultsAboveThreshold = JSON.parse(diagnosisResults).filter(result => result.Issue.Accuracy > correctDiagnosisThreshold);
+        if (diagnosisResultsAboveThreshold.length) {
+          const redFlagPromises = diagnosisResultsAboveThreshold.map(result => apiMedic.getRedFlag(result.Issue.ID));
+          Promise.all(redFlagPromises)
+          .then((result) => {
+            const concerningRedFlagResults = JSON.parse(result).reduce(redFlagResult => redFlagResult !== '');
+            if (concerningRedFlagResults.length) {
+              handleRedflag(phoneNumber, concerningRedFlagResults, userId);
+            } else {
+              const parsedDiagnosisResults = JSON.parse(diagnosisResults);
+              handleDiagnosisResults(phoneNumber, parsedDiagnosisResults, userId);
+            }
+          })
+          .catch((err) => {
+            log.error(err);
+          });
+        } else {
+          sendNoValidResults(phoneNumber, userId);
+        }
+      })
+      .catch((err) => {
+        log.error(err);
+      });
+    }
+  })
+  .catch((err) => {
+    log.error(err);
+  });
+}
+
+function handleProposedSymptomsIncorrect(phoneNumber, userId) {
+  twilio.sendSMSMessage(phoneNumber, messages.proposedSymptomsIncorrect, userId)
+  .then(() => {
+    redis.setLastSentMessage(userId, 'proposedSymptomsIncorrect');
+  });
+}
+
+function handleMoreInformation(phoneNumber, userId) {
+  redis.getUserDocument(userId)
+  .then(userDoc => apiMedic.getIssuesInfo(userDoc.diagnosis[0].id))
+  .then((moreInfoResponse) => {
+    try {
+      const parsedMoreInfoResponse = JSON.parse(moreInfoResponse);
+      twilio.sendSMSMessage(phoneNumber, messages.moreInformation.replace('DIAGNOSIS_INFO', parsedMoreInfoResponse.DescriptionShort).replace('DIAGNOSIS_TREATMENT', parsedMoreInfoResponse.TreatmentDescription), userId);
+    } catch (err) {
+      throw err;
+    }
+  })
+  .then(() => {
+    redis.setLastSentMessage(userId, 'moreInformation');
+  })
+  .then(() => {
+    cache.delete(phoneNumber);
+  })
+  .catch((err) => {
+    log.error(err);
+    twilio.sendSMSMessage(phoneNumber, messages.error, userId);
+  });
+}
+
 function handleConversation(req) {
   return new Promise((resolve, reject) => {
     const phoneNumber = req.body.From;
     const userId = cache.get(phoneNumber);
     const messageBody = req.body.Body;
-    if (phoneNumber && messageBody === 'HELP') {
+    if (phoneNumber && messageBody.toLowerCase() === 'help') {
       // create user Id
       const newUserId = uuid.v4();
       cache.set(req.body.From, newUserId);
-      redis.setUserDocument(newUserId, {})
-      .then(() => redis.addConversationMessage(newUserId, 'HELP', 'incoming'))
+      redis.setUserDocument(newUserId, {}, true)
+      .then(() => redis.addConversationMessage(newUserId, messageBody, 'incoming'))
       .then(() => {
         // send greeting message
         if (process.env.DEMO) {
@@ -88,9 +262,7 @@ function handleConversation(req) {
           const formattedGender = results.gender === 'M' ? 'Male' : 'Female';
           twilio.sendSMSMessage(phoneNumber, messages.storedInformation.replace('STORED_GENDER', formattedGender).replace('STORED_AGE', results.age), newUserId)
           .then(() => {
-            redis.setUserDocument(newUserId, {
-              lastSentMessage: 'storedInformation',
-            });
+            redis.setLastSentMessage(newUserId, 'storedInformation');
           })
           .then(() => resolve())
           .catch((err) => {
@@ -100,9 +272,7 @@ function handleConversation(req) {
         } else {
           twilio.sendSMSMessage(phoneNumber, messages.age, newUserId)
           .then(() => {
-            redis.setUserDocument(newUserId, {
-              lastSentMessage: 'age',
-            });
+            redis.setLastSentMessage(newUserId, 'age');
           })
           .then(() => resolve())
           .catch((err) => {
@@ -128,18 +298,14 @@ function handleConversation(req) {
             const validatedAge = validateAndFormatAge(messageBody);
             if (validatedAge) {
               return user.updateUsersAge(phoneNumber, validatedAge)
-              .then(() => twilio.sendSMSMessage(phoneNumber, messages.gender))
+              .then(() => twilio.sendSMSMessage(phoneNumber, messages.gender, userId))
               .then(() => {
-                redis.setUserDocument(userId, {
-                  lastSentMessage: 'gender',
-                });
+                redis.setLastSentMessage(userId, 'gender');
               });
             }
-            return twilio.sendSMSMessage(phoneNumber, messages.ageError)
+            return twilio.sendSMSMessage(phoneNumber, messages.ageError, userId)
             .then(() => {
-              redis.setUserDocument(userId, {
-                lastSentMessage: 'ageError',
-              });
+              redis.setLastSentMessage(userId, 'ageError');
             });
           }
           case 'gender':
@@ -147,34 +313,53 @@ function handleConversation(req) {
             const validatedGender = validateAndFormatGender(messageBody);
             if (validatedGender) {
               return user.updateUsersGender(phoneNumber, validatedGender)
-              .then(() => twilio.sendSMSMessage(phoneNumber, messages.symptoms))
+              .then(() => twilio.sendSMSMessage(phoneNumber, messages.symptoms, userId))
               .then(() => {
-                redis.setUserDocument(userId, {
-                  lastSentMessage: 'symptoms',
-                });
+                redis.setLastSentMessage(userId, 'symptoms');
               });
             }
-            return twilio.sendSMSMessage(phoneNumber, messages.genderError)
+            return twilio.sendSMSMessage(phoneNumber, messages.genderError, userId)
             .then(() => {
-              redis.setUserDocument(userId, {
-                lastSentMessage: 'genderError',
-              });
+              redis.setLastSentMessage(userId, 'genderError');
             });
           }
           case 'storedInformation':
           case 'storedInformationError': {
             if (messageBody.toLowerCase() === 'y' || messageBody.toLowerCase() === 'yes') {
-              return twilio.sendSMSMessage(phoneNumber, messages.symptoms);
+              return twilio.sendSMSMessage(phoneNumber, messages.symptoms, userId)
+              .then(() => {
+                redis.setLastSentMessage(userId, 'symptoms');
+              });
             } else if (messageBody.toLowerCase() === 'n' || messageBody.toLowerCase() === 'no') {
               return twilio.sendSMSMessage(phoneNumber, messages.age, userId)
               .then(() => {
-                redis.setUserDocument(userId, {
-                  lastSentMessage: 'age',
-                });
+                redis.setLastSentMessage(userId, 'age');
               });
             }
-            return twilio.sendSMSMessage(phoneNumber, messages.storedInformationError);
+            return twilio.sendSMSMessage(phoneNumber, messages.storedInformationError, userId);
           }
+          case 'symptoms':
+          case 'symptomsNoValidResults':
+            if (messageBody) {
+              return handleSymptoms(phoneNumber, messageBody, userId);
+            }
+            break;
+          case 'proposedSymptoms':
+            if (messageBody.toUpperCase() === 'Y') {
+              handleProposedSymptomsCorrect();
+            } else if (messageBody.toUpperCase() === 'N') {
+              handleProposedSymptomsIncorrect();
+            } else {
+              return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
+            }
+            break;
+          case 'diagnosisResults':
+            if (messageBody.toUpperCase() === 'INFO') {
+              handleMoreInformation(phoneNumber, userId);
+            } else {
+              return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
+            }
+            break;
           default:
             return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
         }

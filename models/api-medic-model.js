@@ -7,6 +7,12 @@ const log = require('../helpers/logging-helper');
 const baseUrl = process.env.API_MEDIC_SANDBOX ? 'https://sandbox-healthservice.priaid.ch/' : 'https://healthservice.priaid.ch/';
 const language = 'en-gb';
 const format = 'json';
+const genderFormatDict = {
+  M: 'male',
+  F: 'female',
+  male: 'male',
+  female: 'female',
+};
 let token = '';
 
 function requestToken() {
@@ -40,6 +46,7 @@ function makeRequest(endpoint) {
   const formattedAdditionalRequestParameters = endpoint.indexOf('?') > 0 ? `&${additionalRequestParameters}` : `?${additionalRequestParameters}`;
   return new Promise((resolve, reject) => {
     const url = baseUrl + endpoint + formattedAdditionalRequestParameters;
+    console.log(url);
     request(url, (error, response, body) => {
       if (error) {
         reject(error);
@@ -61,28 +68,28 @@ function makeRequest(endpoint) {
 }
 
 module.exports = {
-  getSymptoms(cb) {
-    return makeRequest('symptoms', cb);
+  getSymptoms() {
+    return makeRequest('symptoms');
   },
-  getIssues(cb) {
-    return makeRequest('issues', cb);
+  getIssues() {
+    return makeRequest('issues');
   },
-  getIssuesInfo(issueId, cb) {
-    return makeRequest(`issues/${issueId}/info`, cb);
+  getIssuesInfo(issueId) {
+    return makeRequest(`issues/${issueId}/info`);
   },
-  getDiagnosis(symptoms, gender, yearOfBirth, cb) {
-    return makeRequest(`diagnosis?symptoms=${JSON.stringify(symptoms)}&gender=${gender}&year_of_birth=${yearOfBirth}`, cb);
+  getDiagnosis(symptoms, gender, yearOfBirth) {
+    return makeRequest(`diagnosis?symptoms=[${symptoms}]&gender=${genderFormatDict[gender]}&year_of_birth=${yearOfBirth}`);
   },
-  getSpecialisations(symptoms, gender, yearOfBirth, cb) {
-    return makeRequest(`diagnosis/specialisations?symptoms=${JSON.stringify(symptoms)}&gender=${gender}&year_of_birth=${yearOfBirth}`, cb);
+  getSpecialisations(symptoms, gender, yearOfBirth) {
+    return makeRequest(`diagnosis/specialisations?symptoms=${JSON.stringify(symptoms)}&gender=${genderFormatDict[gender]}&year_of_birth=${yearOfBirth}`);
   },
-  getBodyLocations(cb) {
-    return makeRequest('body/locations', cb);
+  getBodyLocations() {
+    return makeRequest('body/locations');
   },
-  getBodySublocations(bodyLocationId, cb) {
-    return makeRequest(`body/locations/${bodyLocationId}`, cb);
+  getBodySublocations(bodyLocationId) {
+    return makeRequest(`body/locations/${bodyLocationId}`);
   },
-  getBodySublocationSymptoms(bodySublocationId, gender, yearOfBirth, cb) {
+  getBodySublocationSymptoms(bodySublocationId, gender, yearOfBirth) {
     const age = new Date().getFullYear() - yearOfBirth;
     const childGenderDict = {
       male: 'boy',
@@ -93,12 +100,12 @@ module.exports = {
       female: 'woman',
     };
     const classification = age < 12 ? childGenderDict[gender] : adultGenderDict[gender];
-    return makeRequest(`symptoms/${bodySublocationId}/${classification}`, cb);
+    return makeRequest(`symptoms/${bodySublocationId}/${classification}`);
   },
-  getProposedSymptoms(symptoms, gender, yearOfBirth, cb) {
-    return makeRequest(`symptoms/proposed?symptoms=${JSON.stringify(symptoms)}&gender=${gender}&year_of_birth=${yearOfBirth}`, cb);
+  getProposedSymptoms(symptoms, gender, yearOfBirth) {
+    return makeRequest(`symptoms/proposed?symptoms=${JSON.stringify(symptoms)}&gender=${genderFormatDict[gender]}&year_of_birth=${yearOfBirth}`);
   },
-  getRedFlag(symptomId, cb) {
-    return makeRequest(`redflag?symptomId=${symptomId}`, cb);
+  getRedFlag(symptomId) {
+    return makeRequest(`redflag?symptomId=${symptomId}`);
   },
 };
