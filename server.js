@@ -9,7 +9,7 @@ const bodyParser = require('body-parser');
 
 const app = express();
 
-app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.post('/v1', (req, res) => {
   conversationController.handleConversation(req, res)

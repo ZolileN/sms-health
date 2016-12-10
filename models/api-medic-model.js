@@ -3,6 +3,7 @@ require('dotenv').config({ silent: true });
 const request = require('request');
 const CryptoJS = require('crypto-js');
 const log = require('./../helpers/logging-helper');
+const moment = require('moment');
 
 const baseUrl = process.env.API_MEDIC_SANDBOX ? 'https://sandbox-healthservice.priaid.ch/' : 'https://healthservice.priaid.ch/';
 const language = 'en-gb';
@@ -93,7 +94,7 @@ module.exports = {
     return makeRequest(`body/locations/${bodyLocationId}`);
   },
   getBodySublocationSymptoms(bodySublocationId, gender, yearOfBirth) {
-    const age = new Date().getFullYear() - yearOfBirth;
+    const age = moment().utc().year() - yearOfBirth;
     const childGenderDict = {
       male: 'boy',
       female: 'girl',
