@@ -257,10 +257,11 @@ function handleMoreInformation(phoneNumber, userId) {
 
 function handleConversation(req) {
   return new Promise((resolve, reject) => {
+    console.log(req);
     const phoneNumber = req.body.From;
     const userId = cache.get(phoneNumber);
     const messageBody = req.body.Body;
-    if (phoneNumber && messageBody.toLowerCase() === 'help') {
+    if (phoneNumber && messageBody.toLowerCase() === 'hi') {
       // create user Id
       const newUserId = uuid.v4();
       cache.set(req.body.From, newUserId);
