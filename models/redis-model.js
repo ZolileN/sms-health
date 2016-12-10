@@ -10,7 +10,6 @@ const client = redis.createClient({ url: process.env.REDIS_URL });
 module.exports = {
   setUserDocument(userId, object) {
     const val = object;
-    console.log(val);
     val.timestamp = new Date().toISOString();
     return client.hmsetAsync(`user.${userId}`, val);
   },

@@ -46,7 +46,6 @@ function makeRequest(endpoint) {
   const formattedAdditionalRequestParameters = endpoint.indexOf('?') > 0 ? `&${additionalRequestParameters}` : `?${additionalRequestParameters}`;
   return new Promise((resolve, reject) => {
     const url = baseUrl + endpoint + formattedAdditionalRequestParameters;
-    console.log(url);
     request(url, (error, response, body) => {
       if (error) {
         reject(error);

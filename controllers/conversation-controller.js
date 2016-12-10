@@ -93,7 +93,6 @@ function handleRedflag(phoneNumber, concerningRedFlagResults, userId) {
 
 function handleDiagnosisResults(phoneNumber, weightedDiagnosisResponse, userId) {
   const diagnosisResults = weightedDiagnosisResponse.map(diagnosis => ({ id: diagnosis.Issue.ID, name: diagnosis.Issue.Name, accuracy: diagnosis.Issue.Accuracy }));
-  console.log(diagnosisResults);
   const isdiagnosisAlternativeResultsRequired = (diagnosisResults[1] && diagnosisResults[0].accuracy - diagnosisResults[1].accuracy < alternativeDiagnosisSimilarityThreshold);
   let alternativeDiagnosisMessage = '';
   if (isdiagnosisAlternativeResultsRequired) {
@@ -123,15 +122,11 @@ function handleSymptoms(phoneNumber, messageBody, userId) {
           const yearOfBirth = new Date().getFullYear() - userLookupResults.age;
           apiMedic.getDiagnosis(comparisons.map(comparison => comparison.id), userLookupResults.gender, yearOfBirth)
           .then((diagnosisResults) => {
-            console.log(diagnosisResults);
             const diagnosisResultsAboveThreshold = JSON.parse(diagnosisResults).filter(result => result.Issue.Accuracy > correctDiagnosisThreshold);
             if (diagnosisResultsAboveThreshold.length) {
               const redFlagPromises = diagnosisResultsAboveThreshold.map(result => apiMedic.getRedFlag(result.Issue.ID));
-              console.log(redFlagPromises);
               Promise.all(redFlagPromises)
               .then((result) => {
-                console.log(result);
-                console.log(typeof result);
                 const concerningRedFlagResults = result.reduce(redFlagResult => redFlagResult !== '');
                 if (concerningRedFlagResults.length) {
                   handleRedflag(phoneNumber, concerningRedFlagResults, userId);
