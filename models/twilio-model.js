@@ -10,7 +10,7 @@ function sendSMSMessage(phoneNumber, messageBody, userId) {
   return redis.addConversationMessage(userId, messageBody, 'outgoing')
   .then(() => {
     if (!process.env.TWILIO_LOG_OUTPUT) {
-      client.sms.messages.create({
+      client.sendMessage({
         to: phoneNumber,
         from: process.env.TWILIO_NUMBER,
         body: messageBody,
