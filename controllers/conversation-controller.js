@@ -28,7 +28,7 @@ const messages = {
   proposedSymptomsIncorrect: 'We\'re sorry that those symptoms did not match. Can you please describe your symptoms in more detail?',
   proposedSymptomsNoReturn: 'We\'re sorry, but we could not find a matching diagnosis for those symptoms. Could you please describe your symptoms in more detail?',
   redFlag: 'These symptoms: FLAGGED_SYMPTOM_STRING are concerning and should be evaluated by a doctor. Please go to your nearest healthcare provider.',
-  diagnosisResults: 'It appears that you may be experiencing DIAGNOSIS_RESULT. This was calculated with a DIAGNOSIS_CERTAINTY % probability.DIAGNOSIS_RESULT_ALTERNATES_STRING If you would like more information about treatment options, respond with "INFO".',
+  diagnosisResults: 'It appears that you may be experiencing DIAGNOSIS_RESULT. This was calculated with a DIAGNOSIS_CERTAINTY % probability.DIAGNOSIS_RESULT_ALTERNATES_STRING If you would like more information about treatment options, respond with "MORE".',
   diagnosisAlternativeResults: ' It could also be DIAGNOSIS_RESULT_ALTERNATES.',
   moreInformation: 'Short description of diagnosis: DIAGNOSIS_INFO. Possible treatment options: DIAGNOSIS_TREATMENT',
 };
@@ -379,7 +379,7 @@ function handleConversation(req) {
             }
             break;
           case 'diagnosisResults':
-            if (messageBody.toLowerCase() === 'info') {
+            if (messageBody.toLowerCase() === 'more') {
               handleMoreInformation(phoneNumber, userId);
             } else {
               return twilio.sendSMSMessage(phoneNumber, messages.error, userId);
