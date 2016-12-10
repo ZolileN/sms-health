@@ -16,7 +16,7 @@ function sendSMSMessage(phoneNumber, messageBody, userId) {
         body: messageBody,
       }, (err) => {
         if (err) {
-          log(err);
+          log.error(err);
         }
       });
     } else {
