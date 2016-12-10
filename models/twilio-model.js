@@ -2,7 +2,7 @@ require('dotenv').config({ silent: true });
 
 const twilio = require('twilio');
 const redis = require('./redis-model');
-const log = require('../helpers/logging-helper');
+const log = require('./../helpers/logging-helper');
 
 const client = new twilio.RestClient(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 

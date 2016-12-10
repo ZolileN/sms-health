@@ -1,13 +1,13 @@
 require('dotenv').config({ silent: true });
 
-const twilio = require('../models/twilio-model');
-const apiMedic = require('../models/api-medic-model');
+const twilio = require('./../models/twilio-model');
+const apiMedic = require('./../models/api-medic-model');
 // const translate = require('../models/translate-model');
-const redis = require('../models/redis-model');
-const cache = require('../models/cache-model');
-const user = require('../models/user-model');
-const stringComparison = require('../helpers/string-comparison-helper');
-const log = require('../helpers/logging-helper');
+const redis = require('./../models/redis-model');
+const cache = require('./../models/cache-model');
+const user = require('./../models/user-model');
+const stringComparison = require('./../helpers/string-comparison-helper');
+const log = require('./../helpers/logging-helper');
 const uuid = require('uuid');
 const listify = require('listify');
 
