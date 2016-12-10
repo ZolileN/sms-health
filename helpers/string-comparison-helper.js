@@ -21,7 +21,6 @@ function getImportanceOfWordsInString(string) {
 function compareMessageAndDescriptions(message, descriptions) {
   const compareResults = [];
   const importantWords = getImportanceOfWordsInString(message).filter(word => word.importance > 0);
-  console.log(importantWords);
   descriptions.forEach((description) => {
     let points = 0;
     importantWords.forEach((importantWord) => {
