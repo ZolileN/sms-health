@@ -257,7 +257,6 @@ function handleMoreInformation(phoneNumber, userId) {
 
 function handleConversation(req) {
   return new Promise((resolve, reject) => {
-    console.log(req);
     if (!req.body) {
       reject();
       return;
