@@ -32,6 +32,7 @@ const messages = {
   diagnosisResults: 'It appears that you may be experiencing DIAGNOSIS_RESULT. This was calculated with a DIAGNOSIS_CERTAINTY % probability.DIAGNOSIS_RESULT_ALTERNATES_STRING If you would like more information about treatment options, respond with "MORE".',
   diagnosisAlternativeResults: ' It could also be DIAGNOSIS_RESULT_ALTERNATES.',
   moreInformation: 'Short description of diagnosis: DIAGNOSIS_INFO. Possible treatment options: DIAGNOSIS_TREATMENT',
+  deletedCache: 'Thank you for using SMSHealth, hope you feel better soon!',
 };
 
 const correctDiagnosisThreshold = process.env.CORRECT_DIAGNOSIS_THRESHOLD;
@@ -268,7 +269,7 @@ function handleConversation(req) {
     if (phoneNumber && messageBody.toLowerCase() === 'hi') {
       // create user Id
       const newUserId = uuid.v4();
-      cache.set(req.body.From, newUserId);
+      cache.set(phoneNumber, newUserId);
       redis.setUserDocument(newUserId, {}, true)
       .then(() => redis.addConversationMessage(newUserId, messageBody, 'incoming'))
       .then(() => {
@@ -310,8 +311,17 @@ function handleConversation(req) {
         twilio.sendSMSMessage(phoneNumber, messages.error, newUserId);
         reject();
       });
+    } else if (phoneNumber && userId && messageBody.toLowerCase === 'bye') {
+      cache.delete(phoneNumber);
+      twilio.sendSMSMessage(phoneNumber, messages.deletedCache, userId)
+      .catch((err) => {
+        log.error(err);
+        twilio.sendSMSMessage(phoneNumber, messages.error, userId);
+        reject();
+      });
     } else if (phoneNumber && userId) {
       let userDoc = {};
+      cache.extendTTL(phoneNumber);
       redis.addConversationMessage(userId, messageBody, 'incoming')
       .then(() => redis.getUserDocument(userId))
       .then((userDocument) => {
