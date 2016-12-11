@@ -110,6 +110,9 @@ module.exports = {
     return makeRequest(`symptoms/proposed?symptoms=${symptoms}&gender=${genderFormatDict[gender]}&year_of_birth=${yearOfBirth}`);
   },
   getRedFlag(symptomId) {
-    return makeRequest(`redflag?symptomId=${symptomId}`);
+    if (!process.env.REDFLAG_API_BROKEN) {
+      return makeRequest(`redflag?symptomId=${symptomId}`); // REDFLAG API BROKEN, RETURNING DUMMY DATA
+    }
+    return Promise.resolve('');
   },
 };

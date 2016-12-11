@@ -106,10 +106,10 @@ function handleRedflag(phoneNumber, concerningRedFlagResults, userId) {
 
 function handleDiagnosisResults(phoneNumber, weightedDiagnosisResponse, userId) {
   const diagnosisResults = weightedDiagnosisResponse.map(diagnosis => ({ id: diagnosis.Issue.ID, name: diagnosis.Issue.Name, accuracy: diagnosis.Issue.Accuracy }));
-  const isdiagnosisAlternativeResultsRequired = (diagnosisResults[1] && diagnosisResults[0].accuracy - diagnosisResults[1].accuracy < alternativeDiagnosisSimilarityThreshold);
+  const alternativeDiagnoses = diagnosisResults.filter((element, index, array) => ((array[0].accuracy - element.accuracy) < alternativeDiagnosisSimilarityThreshold)).slice(1);
   let alternativeDiagnosisMessage = '';
-  if (isdiagnosisAlternativeResultsRequired) {
-    const diagnosisResultsAlternativeList = (diagnosisResults.length > 2) ? listify(diagnosisResults.slice(1).map(diagnosis => diagnosis.name), { finalWord: 'or' }) : diagnosisResults[1].name;
+  if (alternativeDiagnoses.length > 0) {
+    const diagnosisResultsAlternativeList = (diagnosisResults.length > 2) ? listify(alternativeDiagnoses.map(diagnosis => diagnosis.name), { finalWord: 'or' }) : diagnosisResults[1].name;
     alternativeDiagnosisMessage = messages.diagnosisAlternativeResults.replace('DIAGNOSIS_RESULT_ALTERNATES', diagnosisResultsAlternativeList);
   }
   const diagnosisMessage = messages.diagnosisResults.replace('DIAGNOSIS_RESULT', diagnosisResults[0].name).replace('DIAGNOSIS_CERTAINTY', diagnosisResults[0].accuracy).replace('DIAGNOSIS_RESULT_ALTERNATES_STRING', alternativeDiagnosisMessage);
