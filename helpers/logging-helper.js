@@ -1,5 +1,6 @@
 require('dotenv').config({ silent: true });
 
+const moment = require('moment');
 const pg = require('knex')({
   client: 'pg',
   connection: process.env.DATABASE_URL,
@@ -12,7 +13,7 @@ module.exports = {
     pg('event_log').insert({
       event_type: 'info',
       message,
-      ts: new Date(),
+      ts: moment().utc().format(),
     }).catch(err => console.log(err));
   },
   error(message) {
@@ -20,7 +21,7 @@ module.exports = {
     pg('event_log').insert({
       event_type: 'error',
       message,
-      ts: new Date(),
+      ts: moment().utc().format(),
     }).catch(err => console.log(err));
   },
 };

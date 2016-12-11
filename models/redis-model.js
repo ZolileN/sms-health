@@ -1,6 +1,7 @@
 const redis = require('redis');
 const bluebird = require('bluebird');
 const conversationLog = require('./conversation-logging-model');
+const moment = require('moment');
 
 bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);
@@ -10,7 +11,7 @@ const client = redis.createClient({ url: process.env.REDIS_URL });
 module.exports = {
   setUserDocument(userId, object) {
     const val = object;
-    val.timestamp = new Date().toISOString();
+    val.timestamp = moment().utc().format();
     return client.hmsetAsync(`user.${userId}`, val);
   },
   setLastSentMessage(userId, message) {
@@ -58,12 +59,12 @@ module.exports = {
       });
     }
     const val = message;
-    val.timestamp = new Date().toISOString();
+    val.timestamp = moment().utc().format();
     return new Promise((resolve, reject) => {
       client.hgetallAsync(`user.${userId}`)
       .then((doc) => {
         const retrievedDoc = doc;
-        const timestamp = new Date().toISOString();
+        const timestamp = moment().utc().format();
         if (!retrievedDoc.messages) {
           retrievedDoc.messages = [];
         } else {
@@ -88,7 +89,7 @@ module.exports = {
   },
   setLanguageDocument(languageCode, object) {
     const val = object;
-    val.timestamp = new Date().toISOString();
+    val.timestamp = moment().utc().format();
     return client.hmsetAsync(`language.${languageCode}`, val);
   },
   getLanguageDocument(languageCode) {

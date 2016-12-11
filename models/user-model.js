@@ -1,6 +1,7 @@
 require('dotenv').config({ silent: true });
 
 const log = require('./../helpers/logging-helper');
+const moment = require('moment');
 
 const pg = require('knex')({
   client: 'pg',
@@ -13,7 +14,7 @@ module.exports = {
     pg('user')
     .where({ phone_number: phoneNumber })
     .del()
-    .then(() => pg('user').insert({ phone_number: phoneNumber, gender, age, ts: new Date() }))
+    .then(() => pg('user').insert({ phone_number: phoneNumber, gender, age, ts: moment().utc().format() }))
     .catch((err) => {
       log.error(err);
     });
@@ -21,7 +22,7 @@ module.exports = {
   updateUsersGender(phoneNumber, gender) {
     return pg('user').update({
       gender,
-      ts: new Date(),
+      ts: moment().utc().format(),
     })
     .where({ phone_number: phoneNumber })
     .catch((err) => {
@@ -31,7 +32,7 @@ module.exports = {
   updateUsersAge(phoneNumber, age) {
     return pg('user').update({
       age,
-      ts: new Date(),
+      ts: moment().utc().format(),
     })
     .where({ phone_number: phoneNumber })
     .catch((err) => {

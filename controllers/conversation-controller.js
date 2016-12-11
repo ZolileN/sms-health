@@ -10,6 +10,7 @@ const stringComparison = require('./../helpers/string-comparison-helper');
 const log = require('./../helpers/logging-helper');
 const uuid = require('uuid');
 const listify = require('listify');
+const moment = require('moment');
 
 const messages = {
   greeting: 'Hi, Thank you for using the SMSHealth service.',
@@ -131,7 +132,7 @@ function handleSymptoms(phoneNumber, messageBody, userId) {
       user.getUserByPhoneNumber(phoneNumber)
       .then((userLookupResults) => {
         if (userLookupResults && userLookupResults.age && userLookupResults.gender) {
-          const yearOfBirth = new Date().getFullYear() - userLookupResults.age;
+          const yearOfBirth = moment().utc().year() - userLookupResults.age;
           apiMedic.getDiagnosis(comparisons.map(comparison => comparison.id), userLookupResults.gender, yearOfBirth)
           .then((diagnosisResults) => {
             const diagnosisResultsAboveThreshold = JSON.parse(diagnosisResults).filter(result => result.Issue.Accuracy > correctDiagnosisThreshold);
@@ -189,7 +190,7 @@ function handleProposedSymptomsCorrect(phoneNumber, userId) {
   })
   .then((userLookupResults) => {
     if (userLookupResults && userLookupResults.age && userLookupResults.gender) {
-      const yearOfBirth = new Date().getFullYear() - userLookupResults.age;
+      const yearOfBirth = moment().utc().year() - userLookupResults.age;
       apiMedic.getDiagnosis(proposedSymptoms.map(symptom => symptom.id), userLookupResults.gender, yearOfBirth)
       .then((diagnosisResults) => {
         const diagnosisResultsAboveThreshold = JSON.parse(diagnosisResults).filter(result => result.Issue.Accuracy > correctDiagnosisThreshold);
