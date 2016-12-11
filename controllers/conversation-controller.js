@@ -311,9 +311,12 @@ function handleConversation(req) {
         twilio.sendSMSMessage(phoneNumber, messages.error, newUserId);
         reject();
       });
-    } else if (phoneNumber && userId && messageBody.toLowerCase === 'bye') {
+    } else if (phoneNumber && userId && messageBody.toLowerCase() === 'bye') {
       cache.delete(phoneNumber);
-      twilio.sendSMSMessage(phoneNumber, messages.deletedCache, userId)
+      redis.addConversationMessage(userId, messageBody, 'incoming')
+      .then(() => {
+        twilio.sendSMSMessage(phoneNumber, messages.deletedCache, userId);
+      })
       .catch((err) => {
         log.error(err);
         twilio.sendSMSMessage(phoneNumber, messages.error, userId);
