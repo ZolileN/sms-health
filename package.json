@@ -1,6 +1,6 @@
 {
   "name": "sms-health",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Healthcare through SMS for Civic Tech Leadership Program",
   "main": "server.js",
   "scripts": {
